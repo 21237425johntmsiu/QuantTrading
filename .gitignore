@@ -1,0 +1,23 @@
+# ══════════════════════════════════════════════════════════════
+# PRIVATE / SENSITIVE — never commit to the public repository
+# ══════════════════════════════════════════════════════════════
+# DB / MySQL / MT5 credentials + all trading config
+env.txt
+
+# Proprietary feature computation method (Python + Rust twins)
+feature_method.py
+feature_method.rs
+
+# Model / strategy data files
+*.npy
+checkpoints/
+.retrain_needed
+
+# ══════════════════════════════════════════════════════════════
+# Build artifacts & caches
+# ══════════════════════════════════════════════════════════════
+target/
+.cargo/
+__pycache__/
+.ipynb_checkpoints/
+*.pyc

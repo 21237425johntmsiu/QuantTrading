@@ -1,0 +1,71 @@
+How to Run price_newDB.rs (Rust BTCUSD Trading Bot with GPU Inference)
+=======================================================================
+
+Prerequisites
+-------------
+- Rust toolchain installed
+- Conda environment `cuda124` with PyTorch 2.6.0+cu124
+- TimescaleDB running at 192.168.1.13:5432
+- env.txt configured with correct DB credentials and paths (env.txt lives at the repo ROOT, outside Rust/ — it is shared with the Python scripts and holds all sensitive data: DB, MySQL, MT5)
+- Model files and scaler CSVs under checkpoints/
+
+Steps
+-----
+
+1. Activate the conda environment and set build/link flags:
+
+   export PATH="/home/comp6a/anaconda3/envs/cuda124/bin:$PATH"
+   export LIBTORCH_USE_PYTORCH=1
+   export LD_LIBRARY_PATH="/home/comp6a/anaconda3/envs/cuda124/lib/python3.11/site-packages/torch/lib:$LD_LIBRARY_PATH"
+
+2. Navigate to the project directory:
+
+   cd /home/comp6a/Desktop/31-7-2023-test/Agent/Price
+
+3. Build (release mode):
+
+   cargo build --release
+
+4. Run:
+
+   ./target/release/price_newdb
+
+   The binary will:
+   - Load env.txt (searched as ./env.txt or ../env.txt, or override with ENV_FILE=/path/to/env.txt)
+     for DB credentials, table names, model paths, thresholds
+   - Connect to TimescaleDB and load historical OHLCV data
+   - Load LSTM TorchScript models on GPU (via dlopen + CUDA)
+   - Every 5 seconds: fetch Binance klines, compute features, run inference
+   - Insert buy/sell training data and signal rows when thresholds are met
+
+One-liner to build and run:
+----------------------------
+
+   PATH="/home/comp6a/anaconda3/envs/cuda124/bin:$PATH" \
+   LIBTORCH_USE_PYTORCH=1 \
+   LD_LIBRARY_PATH="/home/comp6a/anaconda3/envs/cuda124/lib/python3.11/site-packages/torch/lib:$LD_LIBRARY_PATH" \
+   cargo build --release && ./target/release/price_newdb
+
+Expected output
+---------------
+   Temp diff counts:
+     5: 99
+   Old diff counts:
+     5: 29999
+   Loading ML models and scalers...
+   CUDA library loaded via dlopen, probing...
+   CUDA available, using device 0
+   Loading model from checkpoints/LSTM_A1_720_100.pt
+   Loading model from checkpoints/LSTM_A2_720_100.pt
+   Scalers: model1=336 features, model2=96 features
+   columnB periods: 96
+   signal: -0.0452 -0.1392 ts=... spread=124995
+   cost: 0.3
+
+Notes
+-----
+- Model files (.pt) and scaler CSVs must exist under checkpoints/
+- The binary runs until Ctrl+C
+- GPU requires an NVIDIA GPU with CUDA 12.x drivers
+- CUDA is auto-detected at startup via dlopen("libtorch_cuda.so")
+- If CUDA is unavailable, falls back to CPU (slower, ~1.2s/loop)
